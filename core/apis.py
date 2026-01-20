@@ -36,7 +36,6 @@ class XianyuApis:
             logger.info("已从 .env 载入初始 Cookie")
 
     def _save_session(self):
-        """持久化保存，心跳成功后会触发此函数"""
         with open(self.storage_path, 'w', encoding='utf-8') as f:
             json.dump(self.session.cookies.get_dict(), f, indent=4)
 
@@ -52,17 +51,25 @@ class XianyuApis:
         }
         try:
             resp = self.session.get(f'https://h5api.m.goofish.com/h5/{api}/1.0/', params=params, timeout=10)
-            # 如果服务器返回了新 Token，立即保存
-            if '_m_h5_tk' in resp.cookies:
-                self._save_session()
+            if '_m_h5_tk' in resp.cookies: self._save_session()
             return resp.json()
         except Exception as e:
             logger.error(f"网络请求异常: {e}");
             return None
 
     def get_token(self, dev_id):
-        """这就是心跳调用的接口"""
         return self._mtop_request('mtop.taobao.idlemessage.pc.login.token', f'{{"deviceId":"{dev_id}"}}')
 
     def get_item_info(self, item_id):
         return self._mtop_request('mtop.taobao.idle.pc.detail', f'{{"itemId":"{item_id}"}}')
+
+    def get_user_items(self, seller_id, page_number=1):
+        """对接你发现的最新闲鱼号列表接口"""
+        payload = {
+            "userId": str(seller_id),
+            "pageNo": int(page_number),
+            "pageSize": 20
+        }
+        # 必须是紧凑格式 JSON
+        data_json = json.dumps(payload, separators=(',', ':'))
+        return self._mtop_request('mtop.idle.web.xyh.item.list', data_json)
